@@ -2,52 +2,48 @@
 const admin = require('firebase-admin');
 const fetch = require('node-fetch');
 const Mercury = require("@postlight/mercury-parser");
-const {NEWSAPI_KEY} = process.env;
-const serviceAccount = JSON.parse(process.env.FBSA);
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://newscraper-21f8a.firebaseio.com"
-})
-const database = admin.database();
 
-database.ref('/news').set({});
+async function worker({FBSA, NEWSAPI_KEY} = process.env){
+  const serviceAccount = JSON.parse(FBSA);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://newscraper-21f8a.firebaseio.com"
+  })
+  const database = admin.database();
 
-//fetch sources in a promise
-const fetchSources = () => new Promise(resolve => {
-  fetch(`https://newsapi.org/v2/sources?country=us&language=en&apiKey=${NEWSAPI_KEY}`)
-  .then(r=>r.json())
-  .then(data=>resolve(data.sources.map(source=> source.id)));
-});
+  //fetch sources in a promise
+  const fetchSources = () => new Promise(resolve => {
+    fetch(`https://newsapi.org/v2/sources?country=us&language=en&apiKey=${NEWSAPI_KEY}`)
+    .then(r=>r.json())
+    .then(data=>resolve(data.sources.map(source=> source.id)));
+  });
 
-const fetchHeadlines = source => new Promise(resolve => {
-  fetch(`https://newsapi.org/v2/top-headlines?pageSize=10&sources=${source}&apiKey=${NEWSAPI_KEY}`)
-  .then(r=>r.json())
-  .then(data=>resolve(data.articles));
-});
+  const fetchHeadlines = source => new Promise(resolve => {
+    fetch(`https://newsapi.org/v2/top-headlines?pageSize=10&sources=${source}&apiKey=${NEWSAPI_KEY}`)
+    .then(r=>r.json())
+    .then(data=>resolve(data.articles));
+  });
 
-const scrapeContent = async article => {
-  try {
-    const scrapedContent = await Mercury.parse(article.url);
-    console.log("GOT", article.title);
-    // console.log(scrapedContent);
-    if (article.title.includes("CNN Video")) {
+  const scrapeContent = async article => {
+    try {
+      const scrapedContent = await Mercury.parse(article.url);
+      console.log("GOT", article.title);
+      // console.log(scrapedContent);
+      if (article.title.includes("CNN Video")) {
+        return article;
+      }
+
+      return {
+        ...article,
+        content: scrapedContent.content,
+        excerpt: scrapedContent.excerpt
+      }
+    } catch (e) {
       return article;
     }
-
-    return {
-      ...article,
-      content: scrapedContent.content,
-      excerpt: scrapedContent.excerpt
-    }
-  } catch (e) {
-    return article;
   }
-}
 
-//take advantage of the async await cycle to
-//avoid callback hell
-async function worker(){
   let sources = await fetchSources();
   console.log('SOURCES', sources.length);
   let articles = {
