@@ -13,6 +13,7 @@ axios.get(`${process.env.VAULT_HOST}/v1/webhooky/creds`, {
   }
 })
 .then(res => {
+  // const secrets =  app.get("secrets"); in some route
   app.set("secrets", res.data.data);
   //set up cron jobs with creds
   for (let key in tasks) {
