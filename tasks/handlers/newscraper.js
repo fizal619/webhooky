@@ -1,15 +1,15 @@
 'use strict'
-const admin = require('firebase-admin');
 const fetch = require('node-fetch');
 const Mercury = require("@postlight/mercury-parser");
 
-
 async function worker({FBSA, NEWSAPI_KEY} = process.env){
+  const admin = require('firebase-admin');
+
   const serviceAccount = JSON.parse(FBSA);
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://newscraper-21f8a.firebaseio.com"
-  })
+  });
   const database = admin.database();
 
   //fetch sources in a promise
