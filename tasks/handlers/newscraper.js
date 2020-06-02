@@ -4,9 +4,8 @@ const Mercury = require("@postlight/mercury-parser");
 
 async function worker({FBSA, NEWSAPI_KEY} = process.env){
   const admin = require('firebase-admin');
-
   const serviceAccount = JSON.parse(FBSA);
-  admin.initializeApp({
+  const app = admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://newscraper-21f8a.firebaseio.com"
   });
@@ -70,22 +69,26 @@ async function worker({FBSA, NEWSAPI_KEY} = process.env){
     database.ref(`/news/${sources[i]}`).set(scrapedArticles)
       .then(snap=>{
         console.log(scrapedArticles.length, ' items set! for', sources[i]);
+        articles.length += articles[sources[i]].length;
+        database.ref(`/news/length`).set(articles.length)
+        .then(snap=>{
+          console.log(articles.length, ' total so far.');
+          if (i+1 === sources.length) {
+            //this should be the end of scraping
+            app.delete().then(()=>{
+              console.log("signed out of app.");
+            });
+          }
+        })
+        .catch(r=>console.log(r));
       })
       .catch(r=>console.log(r));
-
-    articles.length += articles[sources[i]].length;
-
-    database.ref(`/news/length`).set(articles.length)
-    .then(snap=>{
-      console.log(articles.length, ' total so far.');
-    })
-    .catch(r=>console.log(r));
   }
 
 }
 
 module.exports = {
   name: "newscraper-worker",
-  schedule: "15 6 * * *",
+  schedule: "1 6,15 * * *",
   handler: worker
 }
