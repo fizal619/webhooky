@@ -3,7 +3,7 @@ const { exec } = require("child_process");
 
 module.exports = {
   name: "embedded-app-backup",
-  schedule: "15 1 * * *",
+  schedule: "16 1 * * *",
   handler: ({HEROKU_TOKEN} = process.env) => {
     exec(`HEROKU_API_KEY=${HEROKU_TOKEN} heroku pg:backups:capture --app embedded-membership-app`, (error, stdout, stderr) => {
       if (error) {
